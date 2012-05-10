@@ -1,17 +1,10 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    bson (1.5.2)
-    bson_ext (1.5.2)
-      bson (= 1.5.2)
-    mongo (1.5.2)
-      bson (= 1.5.2)
-    yajl-ruby (1.1.0)
+    yajl-ruby (1.1.0-x86-mingw32)
 
 PLATFORMS
-  ruby
+  x86-mingw32
 
 DEPENDENCIES
-  bson_ext
-  mongo
   yajl-ruby

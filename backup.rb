@@ -1,26 +1,36 @@
 #!/usr/bin/env ruby
-require "bundler/setup"
+require 'bundler/setup'
 require 'yajl'
-require 'mongo'
 require 'open-uri'
 
 def debug(msg)
   puts msg if ENV["DEBUG"]
 end
 
-def tweet_collection
-  @db ||= Mongo::Connection.new("127.0.0.1").db("twitter")
-  @tweet_collection ||= @db.collection('tweets')
-end
-
 def latest_stored_tweet_id
-  tweet = tweet_collection.find.sort(["id", "descending"]).limit(1).to_a[0]
-  tweet && tweet["id"]
+  max = 0
+  tweet = nil
+
+  if $all_tweets
+    $all_tweets.each do |value|
+      id = value['id'].to_i
+      
+      if id > max
+        max = id
+        tweet = value
+      end
+    end
+
+    puts "Starting from Tweet #{max}"
+  end
+
+  tweet && tweet['id']
 end
 
-def load_tweets(username)
-  url = "http://api.twitter.com/1/statuses/user_timeline.json?screen_name=#{username}&trim_user=1&count=200"
-  url << "&since_id=#{latest_stored_tweet_id}" if latest_stored_tweet_id
+def load_tweets()
+  last_id = latest_stored_tweet_id
+  url = "http://api.twitter.com/1/statuses/user_timeline.json?screen_name=#{$username}&trim_user=1&count=200"
+  url << "&since_id=#{last_id}" if last_id
   tweets = []
   result = nil
   page = 1
@@ -36,14 +46,27 @@ def load_tweets(username)
   tweets
 end
 
-def store_tweets(username)
-  tweets = load_tweets(username)
+def store_tweets()
+  if !File.exists?($username + ".json")
+    File.new($username + ".json", 'w')
+  end
+  file = File.new($username + ".json", 'r')
+  $all_tweets = Yajl::Parser.parse(file)
+
+  tweets = load_tweets()
   puts "Importing #{tweets.size} new tweets..."
   tweets.reverse!
-  tweets.each_with_index do |tweet, idx|
-    puts tweet['id'] if (idx + 1) % 100 == 0
-    tweet_collection.insert(tweet)
+
+  if $all_tweets
+    store = $all_tweets | tweets 
+  else
+    store = tweets
   end
+  
+  puts "Saving #{store.size} tweets..."
+  file = File.new(ARGV[0] + ".json", 'w')
+  Yajl::Encoder.encode(store, file)
 end
 
-store_tweets(ARGV[0]) if __FILE__ == $0
+$username = ARGV[0]
+store_tweets() if __FILE__ == $0
