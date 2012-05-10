@@ -3,6 +3,8 @@ require 'bundler/setup'
 require 'yajl'
 require 'open-uri'
 
+INFINITY = 1.0/0
+
 def debug(msg)
   puts msg if ENV["DEBUG"]
 end
@@ -27,20 +29,43 @@ def latest_stored_tweet_id
   tweet && tweet['id']
 end
 
+def get_minimum_tweet_id(tweets)
+  min = INFINITY
+
+  if tweets
+    tweets.each do |value|
+      id = value['id'].to_i
+
+      min = id if id < min
+    end
+  end
+
+  min
+end
+
 def load_tweets()
   last_id = latest_stored_tweet_id
-  url = "http://api.twitter.com/1/statuses/user_timeline.json?screen_name=#{$username}&trim_user=1&count=200"
+  url = "http://api.twitter.com/1/statuses/user_timeline.json?screen_name=#{$username}&trim_user=1&count=200&include_rts=1"
   url << "&since_id=#{last_id}" if last_id
   tweets = []
   result = nil
   page = 1
+  min = INFINITY
   until page > 1 && result.empty?
     debug "Fetching page #{page}..."
-    open("#{url}&page=#{page}") do |f|
+    
+    if min < INFINITY
+      final_url = "#{url}&max_id=#{min}"
+    else
+      final_url = url
+    end
+
+    open(final_url) do |f|
       page  += 1
       result = Yajl::Parser.parse(f.read)
       debug "got #{result.length} tweets"
-      tweets.push *result if !result.empty?
+      min = get_minimum_tweet_id(result) - 1
+      tweets = tweets | result if !result.empty?
     end
   end
   tweets
