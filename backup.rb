@@ -45,7 +45,7 @@ end
 
 def load_tweets()
   last_id = latest_stored_tweet_id
-  url = "http://api.twitter.com/1/statuses/user_timeline.json?screen_name=#{$username}&trim_user=1&count=200&include_rts=1"
+  url = "http://api.twitter.com/1/statuses/user_timeline.json?screen_name=#{$username}&trim_user=1&count=200&include_rts=1&include_entities=1"
   url << "&since_id=#{last_id}" if last_id
   tweets = []
   result = nil
